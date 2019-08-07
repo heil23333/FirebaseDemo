@@ -1,6 +1,7 @@
 package fsc.com.firebasedemo;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -16,6 +17,8 @@ import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.firebase.ui.auth.AuthUI;
+import com.firebase.ui.auth.IdpResponse;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
@@ -27,7 +30,9 @@ import com.google.firebase.firestore.QueryDocumentSnapshot;
 import com.google.firebase.firestore.QuerySnapshot;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -39,6 +44,12 @@ public class MainActivity extends AppCompatActivity {
     private RecyclerView channelRecyclerview;
     private ArrayList<Channel> channels;
     private ChannelAdapter adapter;
+    private final int RC_SIGN_IN = 100;
+    private FirebaseAuth mAuth;
+    List<AuthUI.IdpConfig> providers = Arrays.asList(
+            new AuthUI.IdpConfig.EmailBuilder().build(),
+            new AuthUI.IdpConfig.PhoneBuilder().build()
+    );
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -46,6 +57,19 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
         initView();
+        checkLoginState();
+    }
+
+    private void checkLoginState() {
+        if (mAuth != null && mAuth.getCurrentUser() == null) {
+            startActivityForResult(
+                    AuthUI.getInstance()
+                            .createSignInIntentBuilder()
+                            .setIsSmartLockEnabled(true)
+                            .setAvailableProviders(providers)
+                            .build(),
+                    RC_SIGN_IN);
+        }
     }
 
     private void initView() {
@@ -57,7 +81,7 @@ public class MainActivity extends AppCompatActivity {
         linearLayoutManager.setOrientation(RecyclerView.VERTICAL);
         channelRecyclerview.setLayoutManager(linearLayoutManager);
         channelRecyclerview.setAdapter(adapter);
-
+        mAuth = FirebaseAuth.getInstance();
         MyApplication.getFirebaseDB().collection("channel").get().addOnCompleteListener(new OnCompleteListener<QuerySnapshot>() {
             @Override
             public void onComplete(@NonNull Task<QuerySnapshot> task) {
@@ -87,8 +111,7 @@ public class MainActivity extends AppCompatActivity {
         switch (item.getItemId()) {
             case R.id.logout:
                 FirebaseAuth.getInstance().signOut();
-                startActivity(new Intent(MainActivity.this, LoginActivity.class));
-                finish();
+                checkLoginState();
                 break;
             case R.id.create_channel:
                 final EditText editText = new EditText(MainActivity.this);
@@ -100,9 +123,7 @@ public class MainActivity extends AppCompatActivity {
                             public void onClick(DialogInterface dialog, int which) {
                                 FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
                                 if (user == null) {
-                                    startActivity(new Intent(MainActivity.this, LoginActivity.class));
-                                    finish();
-                                    return;
+                                    checkLoginState();
                                 } else {
                                     Map<String, Object> channel = new HashMap<>();
                                     channel.put("channelCreator", user.getUid());
@@ -115,12 +136,12 @@ public class MainActivity extends AppCompatActivity {
                                                 public void onSuccess(DocumentReference documentReference) {
                                                     Toast.makeText(MainActivity.this, "创建成功："
                                                             + editText.getText().toString(), Toast.LENGTH_LONG).show();
+                                                    refreshList();
                                                 }
                                             })
                                             .addOnFailureListener(new OnFailureListener() {
                                                 @Override
                                                 public void onFailure(@NonNull Exception e) {
-                                                    System.out.println("hl------添加失败");
                                                     e.printStackTrace();
                                                 }
                                             });
@@ -139,5 +160,38 @@ public class MainActivity extends AppCompatActivity {
                 break;
         }
         return super.onOptionsItemSelected(item);
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == RC_SIGN_IN) {
+            IdpResponse response = IdpResponse.fromResultIntent(data);
+            if (resultCode != RESULT_OK) {
+                if (response != null && response.getError() != null) {
+                    response.getError().printStackTrace();
+                } else {
+                    finish();
+                }
+            }
+            refreshList();
+        }
+    }
+
+    private void refreshList() {
+        MyApplication.getFirebaseDB().collection("channel").get().addOnCompleteListener(new OnCompleteListener<QuerySnapshot>() {
+            @Override
+            public void onComplete(@NonNull Task<QuerySnapshot> task) {
+                if (task.isSuccessful() && task.getResult() != null) {
+                    channels.clear();
+                    for (QueryDocumentSnapshot documentSnapshot : task.getResult()) {
+                        Channel channel = new Channel((long) documentSnapshot.get("channelNo"), documentSnapshot.getString("channelName"),
+                                documentSnapshot.getString("channelCreator"));
+                        channels.add(channel);
+                    }
+                    adapter.notifyDataSetChanged();
+                }
+            }
+        });
     }
 }
