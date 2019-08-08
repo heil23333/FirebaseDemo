@@ -9,7 +9,6 @@ public class MyApplication extends Application {
     @Override
     public void onCreate() {
         super.onCreate();
-        db = FirebaseFirestore.getInstance();
     }
     public static FirebaseFirestore getFirebaseDB() {
         if (db == null) {

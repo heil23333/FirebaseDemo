@@ -1,11 +1,13 @@
 package fsc.com.firebasedemo.bean;
 
 public class Channel {
-    private long channelId;
+    private int channelId;
     private String channelName;
     private String channelCreatorId;
 
-    public Channel(long channelId, String channelName, String channelCreatorId) {
+    public Channel() {}
+
+    public Channel(int channelId, String channelName, String channelCreatorId) {
         this.channelId = channelId;
         this.channelName = channelName;
         this.channelCreatorId = channelCreatorId;
@@ -15,7 +17,7 @@ public class Channel {
         return channelId;
     }
 
-    public void setChannelId(long channelId) {
+    public void setChannelId(int channelId) {
         this.channelId = channelId;
     }
 

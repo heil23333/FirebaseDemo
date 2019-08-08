@@ -3,6 +3,7 @@ package fsc.com.firebasedemo;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.recyclerview.widget.DividerItemDecoration;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -13,6 +14,7 @@ import android.os.Bundle;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
+import android.view.View;
 import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -26,14 +28,14 @@ import com.google.android.gms.tasks.Task;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.DocumentReference;
-import com.google.firebase.firestore.QueryDocumentSnapshot;
+import com.google.firebase.firestore.DocumentSnapshot;
+import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.FirebaseFirestoreException;
+import com.google.firebase.firestore.Query;
 import com.google.firebase.firestore.QuerySnapshot;
 
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 
 import fsc.com.firebasedemo.bean.Channel;
@@ -42,14 +44,23 @@ public class MainActivity extends AppCompatActivity {
 
     private TextView hintText;
     private RecyclerView channelRecyclerview;
-    private ArrayList<Channel> channels;
     private ChannelAdapter adapter;
     private final int RC_SIGN_IN = 100;
     private FirebaseAuth mAuth;
+    private Query query;
+    private FirebaseFirestore firebaseFirestore;
     List<AuthUI.IdpConfig> providers = Arrays.asList(
+            new AuthUI.IdpConfig.GoogleBuilder().build(),
             new AuthUI.IdpConfig.EmailBuilder().build(),
             new AuthUI.IdpConfig.PhoneBuilder().build()
     );
+
+    ChannelAdapter.OnChannelSelectedListener listener = new ChannelAdapter.OnChannelSelectedListener() {
+        @Override
+        public void onChannelSelected(DocumentSnapshot channel) {
+
+        }
+    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -73,30 +84,46 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void initView() {
-        hintText = findViewById(R.id.hint_text);
-        channelRecyclerview = findViewById(R.id.channel_list);
-        channels = new ArrayList<>();
-        adapter = new ChannelAdapter(channels, MainActivity.this);
-        LinearLayoutManager linearLayoutManager = new LinearLayoutManager(this);
-        linearLayoutManager.setOrientation(RecyclerView.VERTICAL);
-        channelRecyclerview.setLayoutManager(linearLayoutManager);
-        channelRecyclerview.setAdapter(adapter);
-        mAuth = FirebaseAuth.getInstance();
-        MyApplication.getFirebaseDB().collection("channel").get().addOnCompleteListener(new OnCompleteListener<QuerySnapshot>() {
+        FirebaseFirestore.setLoggingEnabled(true);
+        firebaseFirestore = FirebaseFirestore.getInstance();
+        query = firebaseFirestore.collection("channel")
+                .orderBy("channelName", Query.Direction.DESCENDING)
+                .limit(10);
+        query.get().addOnCompleteListener(new OnCompleteListener<QuerySnapshot>() {
             @Override
             public void onComplete(@NonNull Task<QuerySnapshot> task) {
-                if (task.isSuccessful() && task.getResult() != null) {
-                    channels.clear();
-                    for (QueryDocumentSnapshot documentSnapshot : task.getResult()) {
-                        Channel channel = new Channel((long) documentSnapshot.get("channelNo"), documentSnapshot.getString("channelName"),
-                                documentSnapshot.getString("channelCreator"));
-                        channels.add(channel);
-                    }
-                    adapter.notifyDataSetChanged();
+                if (task.isSuccessful()) {
+                    System.out.println("hl-----task.getResult().getDocuments()=" + task.getResult().getDocuments());
                 }
             }
         });
+        hintText = findViewById(R.id.hint_text);
+        channelRecyclerview = findViewById(R.id.channel_list);
+        adapter = new ChannelAdapter(query, listener) {
+            @Override
+            protected void onDataChanged() {
+                super.onDataChanged();
+                if (getItemCount() == 0) {
+                    channelRecyclerview.setVisibility(View.GONE);
+                    hintText.setVisibility(View.VISIBLE);
+                } else {
+                    System.out.println("hl------getItemCount()=" + getItemCount());
+                    channelRecyclerview.setVisibility(View.VISIBLE);
+                    hintText.setVisibility(View.GONE);
+                }
+            }
 
+            @Override
+            protected void onError(FirebaseFirestoreException e) {
+                super.onError(e);
+                System.out.println("hl------error:" + e.getLocalizedMessage());
+                e.printStackTrace();
+            }
+        };
+        channelRecyclerview.setLayoutManager(new LinearLayoutManager(this));
+        channelRecyclerview.setAdapter(adapter);
+        channelRecyclerview.addItemDecoration(new DividerItemDecoration(MainActivity.this, DividerItemDecoration.VERTICAL));
+        mAuth = FirebaseAuth.getInstance();
     }
 
     @Override
@@ -125,18 +152,15 @@ public class MainActivity extends AppCompatActivity {
                                 if (user == null) {
                                     checkLoginState();
                                 } else {
-                                    Map<String, Object> channel = new HashMap<>();
-                                    channel.put("channelCreator", user.getUid());
-                                    channel.put("channelNo", UUID.randomUUID().hashCode());
-                                    channel.put("channelName", editText.getText().toString());
-                                    MyApplication.getFirebaseDB().collection("channel")
-                                            .add(channel)
+                                    Channel newChannel = new Channel(UUID.randomUUID().hashCode(), editText.getText().toString(), user.getUid());
+
+                                    firebaseFirestore.collection("channel")
+                                            .add(newChannel)
                                             .addOnSuccessListener(new OnSuccessListener<DocumentReference>() {
                                                 @Override
                                                 public void onSuccess(DocumentReference documentReference) {
                                                     Toast.makeText(MainActivity.this, "创建成功："
                                                             + editText.getText().toString(), Toast.LENGTH_LONG).show();
-                                                    refreshList();
                                                 }
                                             })
                                             .addOnFailureListener(new OnFailureListener() {
@@ -174,24 +198,6 @@ public class MainActivity extends AppCompatActivity {
                     finish();
                 }
             }
-            refreshList();
         }
-    }
-
-    private void refreshList() {
-        MyApplication.getFirebaseDB().collection("channel").get().addOnCompleteListener(new OnCompleteListener<QuerySnapshot>() {
-            @Override
-            public void onComplete(@NonNull Task<QuerySnapshot> task) {
-                if (task.isSuccessful() && task.getResult() != null) {
-                    channels.clear();
-                    for (QueryDocumentSnapshot documentSnapshot : task.getResult()) {
-                        Channel channel = new Channel((long) documentSnapshot.get("channelNo"), documentSnapshot.getString("channelName"),
-                                documentSnapshot.getString("channelCreator"));
-                        channels.add(channel);
-                    }
-                    adapter.notifyDataSetChanged();
-                }
-            }
-        });
     }
 }
