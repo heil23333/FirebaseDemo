@@ -6,6 +6,6 @@ public class MyFirebaseMessageService extends FirebaseMessagingService {
     @Override
     public void onNewToken(String s) {
         super.onNewToken(s);
-
+        System.out.println("hl------new token=" + s);
     }
 }

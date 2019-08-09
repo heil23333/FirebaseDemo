@@ -1,4 +1,4 @@
-package fsc.com.firebasedemo;
+package fsc.com.firebasedemo.activity;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -32,12 +32,15 @@ import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.FirebaseFirestoreException;
 import com.google.firebase.firestore.Query;
-import com.google.firebase.firestore.QuerySnapshot;
+import com.google.firebase.iid.FirebaseInstanceId;
+import com.google.firebase.iid.InstanceIdResult;
 
 import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 
+import fsc.com.firebasedemo.adapter.ChannelAdapter;
+import fsc.com.firebasedemo.R;
 import fsc.com.firebasedemo.bean.Channel;
 
 public class MainActivity extends AppCompatActivity {
@@ -57,8 +60,12 @@ public class MainActivity extends AppCompatActivity {
 
     ChannelAdapter.OnChannelSelectedListener listener = new ChannelAdapter.OnChannelSelectedListener() {
         @Override
-        public void onChannelSelected(DocumentSnapshot channel) {
-
+        public void onChannelSelected(DocumentSnapshot snapshot) {
+            Channel channel = snapshot.toObject(Channel.class);
+            Intent intent = new Intent(MainActivity.this, ChatActivity.class);
+            intent.putExtra("channelUuid", channel.getChannelId());
+            System.out.println("hl--------channelUuid=" + channel.getChannelId());
+            startActivity(intent);
         }
     };
 
@@ -80,6 +87,17 @@ public class MainActivity extends AppCompatActivity {
                             .setAvailableProviders(providers)
                             .build(),
                     RC_SIGN_IN);
+        } else {
+            FirebaseInstanceId.getInstance().getInstanceId()
+                    .addOnCompleteListener(new OnCompleteListener<InstanceIdResult>() {
+                        @Override
+                        public void onComplete(@NonNull Task<InstanceIdResult> task) {
+                            // Get new Instance ID token
+                            String token = task.getResult().getToken();
+                            System.out.println("hl-------token=" + token);
+                        }
+                    });
+
         }
     }
 
@@ -87,7 +105,7 @@ public class MainActivity extends AppCompatActivity {
         FirebaseFirestore.setLoggingEnabled(true);
         firebaseFirestore = FirebaseFirestore.getInstance();
         query = firebaseFirestore.collection("channel")
-                .orderBy("channelName", Query.Direction.DESCENDING)
+                .orderBy("channelCreateTime", Query.Direction.DESCENDING)
                 .limit(50);
 
         hintText = findViewById(R.id.hint_text);
@@ -145,7 +163,8 @@ public class MainActivity extends AppCompatActivity {
                                 if (user == null) {
                                     checkLoginState();
                                 } else {
-                                    Channel newChannel = new Channel(UUID.randomUUID().hashCode(), editText.getText().toString(), user.getUid());
+                                    Channel newChannel = new Channel(UUID.randomUUID().hashCode(),
+                                            editText.getText().toString(), user.getUid(), System.currentTimeMillis(), "");
 
                                     firebaseFirestore.collection("channel")
                                             .add(newChannel)
@@ -187,10 +206,13 @@ public class MainActivity extends AppCompatActivity {
             if (resultCode != RESULT_OK) {
                 if (response != null && response.getError() != null) {
                     response.getError().printStackTrace();
+                    checkLoginState();
                 } else {
                     finish();
                 }
             }
+            checkLoginState();
+            initView();
         }
     }
 }

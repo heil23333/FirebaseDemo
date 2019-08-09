@@ -1,4 +1,4 @@
-package fsc.com.firebasedemo;
+package fsc.com.firebasedemo.adapter;
 
 import android.view.LayoutInflater;
 import android.view.View;
@@ -12,6 +12,10 @@ import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.Query;
 
 
+import java.text.SimpleDateFormat;
+import java.util.Date;
+
+import fsc.com.firebasedemo.R;
 import fsc.com.firebasedemo.bean.Channel;
 
 public class ChannelAdapter extends FirestoreAdapter<ChannelAdapter.MyViewHolder> {
@@ -60,10 +64,14 @@ public class ChannelAdapter extends FirestoreAdapter<ChannelAdapter.MyViewHolder
         public void bind(final DocumentSnapshot snapshot,
                          final OnChannelSelectedListener listener) {
             final Channel channel = snapshot.toObject(Channel.class);
-            System.out.println("hl--------channel.getChannelName()=" + channel.getChannelName());
+            SimpleDateFormat format = new SimpleDateFormat("yyyy年MM月dd日 HH:mm:ss");
             channelName.setText(channel.getChannelName());
-            msgContent.setText("测试数据啦 哈哈哈");
-            msgTime.setText("17:30");
+            if (channel.getLastMsgContent().length() == 0) {
+                msgContent.setText("还没有人聊天呢");
+            } else {
+                msgContent.setText(channel.getLastMsgContent());
+            }
+            msgTime.setText(format.format((new Date(channel.getChannelCreateTime()))));
 
             itemView.setOnClickListener(new View.OnClickListener() {
                 @Override

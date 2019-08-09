@@ -1,4 +1,4 @@
-package fsc.com.firebasedemo;
+package fsc.com.firebasedemo.adapter;
 
 import androidx.recyclerview.widget.RecyclerView;
 
