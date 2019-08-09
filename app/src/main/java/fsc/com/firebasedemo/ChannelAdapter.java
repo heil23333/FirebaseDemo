@@ -14,7 +14,7 @@ import com.google.firebase.firestore.Query;
 
 import fsc.com.firebasedemo.bean.Channel;
 
-public class ChannelAdapter extends FirestoreAdapter <ChannelAdapter.MyViewHolder> {
+public class ChannelAdapter extends FirestoreAdapter<ChannelAdapter.MyViewHolder> {
 
     private OnChannelSelectedListener mListener;
 
@@ -46,7 +46,7 @@ public class ChannelAdapter extends FirestoreAdapter <ChannelAdapter.MyViewHolde
         holder.bind(getSnapshot(position), mListener);
     }
 
-    class MyViewHolder extends RecyclerView.ViewHolder{
+    class MyViewHolder extends RecyclerView.ViewHolder {
 
         private TextView channelName, msgTime, msgContent;
 

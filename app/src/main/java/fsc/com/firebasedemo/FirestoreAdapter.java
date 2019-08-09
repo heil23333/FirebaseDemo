@@ -27,6 +27,7 @@ public abstract class FirestoreAdapter<VH extends RecyclerView.ViewHolder>
 
     public FirestoreAdapter(Query query) {
         mQuery = query;
+        setQuery(mQuery);
     }
 
     @Override

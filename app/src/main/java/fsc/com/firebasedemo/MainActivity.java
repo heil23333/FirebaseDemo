@@ -88,15 +88,8 @@ public class MainActivity extends AppCompatActivity {
         firebaseFirestore = FirebaseFirestore.getInstance();
         query = firebaseFirestore.collection("channel")
                 .orderBy("channelName", Query.Direction.DESCENDING)
-                .limit(10);
-        query.get().addOnCompleteListener(new OnCompleteListener<QuerySnapshot>() {
-            @Override
-            public void onComplete(@NonNull Task<QuerySnapshot> task) {
-                if (task.isSuccessful()) {
-                    System.out.println("hl-----task.getResult().getDocuments()=" + task.getResult().getDocuments());
-                }
-            }
-        });
+                .limit(50);
+
         hintText = findViewById(R.id.hint_text);
         channelRecyclerview = findViewById(R.id.channel_list);
         adapter = new ChannelAdapter(query, listener) {
