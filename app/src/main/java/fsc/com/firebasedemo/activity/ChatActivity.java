@@ -7,6 +7,8 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import android.os.Bundle;
+import android.text.Editable;
+import android.text.TextWatcher;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
@@ -69,17 +71,42 @@ public class ChatActivity extends AppCompatActivity {
         sendBtn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                Message message = new Message(msgEditText.getText().toString(), FirebaseAuth.getInstance().getCurrentUser().getDisplayName()
-                        , System.currentTimeMillis(), FirebaseAuth.getInstance().getCurrentUser().getUid());
-                FirebaseFirestore.getInstance().collection(channelUuid + "").add(message).addOnCompleteListener(new OnCompleteListener<DocumentReference>() {
-                    @Override
-                    public void onComplete(@NonNull Task<DocumentReference> task) {
-                        if (task.isSuccessful()) {
-                            Toast.makeText(ChatActivity.this, "发送成功", Toast.LENGTH_LONG).show();
-                            msgEditText.setText("");
+                if (sendBtn.getText().toString().equals("发送")) {
+                    Message message = new Message(msgEditText.getText().toString(), FirebaseAuth.getInstance().getCurrentUser().getDisplayName()
+                            , System.currentTimeMillis(), FirebaseAuth.getInstance().getCurrentUser().getUid());
+                    FirebaseFirestore.getInstance().collection(channelUuid + "").add(message).addOnCompleteListener(new OnCompleteListener<DocumentReference>() {
+                        @Override
+                        public void onComplete(@NonNull Task<DocumentReference> task) {
+                            if (task.isSuccessful()) {
+                                Toast.makeText(ChatActivity.this, "发送成功", Toast.LENGTH_LONG).show();
+                                msgEditText.setText("");
+                            }
                         }
-                    }
-                });
+                    });
+                } else {
+
+                }
+            }
+        });
+
+        msgEditText.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+
+            }
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+
+            }
+
+            @Override
+            public void afterTextChanged(Editable s) {
+                if (s.toString().length() == 0) {
+                    sendBtn.setText("图片");
+                } else {
+                    sendBtn.setText("发送");
+                }
             }
         });
     }
